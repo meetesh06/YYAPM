@@ -24,14 +24,16 @@ const App: React.FC = () => {
 
   const [loaded, setLoaded] = useState(false)
   const [master, setMaster] = useState("")
-  const [passwords, setPasswords] = useState([])
+  const defpass: any[] = []
+  const [passwords, setPasswords] = useState(defpass)
   const [toAddName, setToAddName] = useState("")
   const [toAddEmail, setToAddEmail] = useState("")
   const [toAddOther, setToAddOther] = useState("")
   const [toAddLength, setToAddLength] = useState(14)
   const [toAddPassword, setToAddPassword] = useState("")
   const [copiedError, setCopiedError] = useState(false)
-  const [tempLoaded, setTempLoaded] = useState("")
+  const tempLoadedType: any = ""
+  const [tempLoaded, setTempLoaded] = useState(tempLoadedType)
   const [tempQR, setTempQR] = useState("")
   const [unlockError, setUnlockError] = useState(false)
 
@@ -58,7 +60,7 @@ const App: React.FC = () => {
     }
   
     let password = '';
-    const crypto = window.crypto || window.msCrypto;
+    const crypto = window.crypto; // || window.msCrypto
     if (crypto && crypto.getRandomValues) {
       const values = new Uint32Array(length);
       crypto.getRandomValues(values);
@@ -135,7 +137,7 @@ const App: React.FC = () => {
     return btoa(encryptedText);
   }
 
-  async function decryptTextWithPassword(encryptedText, password) {
+  async function decryptTextWithPassword(encryptedText: any, password: any) {
     const decoder = new TextDecoder();
     const encryptedData = Uint8Array.from(atob(encryptedText), byte => byte.charCodeAt(0));
   
@@ -208,8 +210,10 @@ const App: React.FC = () => {
     
 
     reader.onload = (event) => {
-      const contents = event.target.result;
-      setTempLoaded(contents);
+      if (event.target != null) {
+          const contents = event.target.result;
+          setTempLoaded(contents);
+      }
     };
 
     reader.readAsText(file);
@@ -239,7 +243,7 @@ const App: React.FC = () => {
 
   }
 
-  const displayQR = (text) => {
+  const displayQR = (text: any) => {
     setTempQR(text)
     setTimeout(() => setTempQR(""), 5000);
   }
@@ -259,7 +263,7 @@ const App: React.FC = () => {
               {
                 !loaded &&
                 <div>
-                  <Button onClick={() => setLoaded(true)} type="primary" shape="default" icon={<PlusCircleFilled />} size={10}>
+                  <Button onClick={() => setLoaded(true)} type="primary" shape="default" icon={<PlusCircleFilled />}>
                     Create
                   </Button>
                   <Divider type="vertical" />
@@ -354,7 +358,7 @@ const App: React.FC = () => {
                             onChange={(v) => { generateSecurePassword(); setToAddLength(v)}}
                             value={toAddLength}
                           />
-                          <Button onClick={addCredential} disabled={!toAddReady} type="primary" shape="default" icon={<SaveFilled />} size={10}>
+                          <Button onClick={addCredential} disabled={!toAddReady} type="primary" shape="default" icon={<SaveFilled />} >
                             Add
                           </Button>
                         </Space>
