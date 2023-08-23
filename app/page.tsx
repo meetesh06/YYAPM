@@ -1,272 +1,494 @@
 'use client';
 
-import React, { useState } from 'react';
-import QRCode from "react-qr-code";
+import React, { useEffect, useState } from 'react';
 
 import './App.scss';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Alert, Button, Card, Col, Container, Dropdown, Form, Nav, Navbar, Row, Stack, Tab } from 'react-bootstrap';
+import { Button, ButtonGroup, Card, Col, Container, Form, Nav, Navbar, Row, Spinner, Stack, Tab } from 'react-bootstrap';
 
-import { BiExport, BiInfoCircle, BiPlus, BiPlusCircle, BiShield, BiSolidShield } from 'react-icons/bi';
+import { BiSolidShield } from 'react-icons/bi';
+import { useGenericStatefulData } from './hooks/GenericStatefulData';
+// import { assert } from 'console';
+import WelcomeAlert from './components/WelcomeAlert';
+import LoadedAlert from './components/LoadedAlert';
+import UnlockAlert from './components/UnlockAlert';
+import AddGroupModal from './components/AddGroupModal';
+import RemoveGroupModal from './components/RemoveGroupModal';
+import AddNoteModal from './components/AddNoteModal';
+import AddCredentialModal from './components/AddCredentialModal';
 
-enum PasswordStoreState {
+import Masonry, {ResponsiveMasonry} from "react-responsive-masonry";
+
+import NoteCard from './components/NoteCard';
+import CredCard from './components/CredCard';
+
+enum ProgStates {
   Initial,
-  NewStoreInMemory,
-  LockedStoreLoaded,
-  UnlockedStoreLoaded,
-  UnlockedSafe,
-  UnlockedTainted
+  LockedData,
+  Saved,
+  Unsaved
 };
 
-enum TextType {
-  Normal,
-  Hidden
-};
-
-
-class Noteable {
-  text: string;
-  multiline: boolean;
-  type: TextType;
-
-  constructor(text: string = "", multiline: boolean = false, type: TextType = TextType.Normal) {
-    this.text = text;
-    this.multiline = multiline;
-    this.type = type;
-  }
-
-  setText(text: string): void {
-    this.text = text;
-  }
-  getText(): string {
-    return this.text;
-  }
-
-  setMultiline(multiline: boolean): void {
-    this.multiline = multiline;
-  }
-  
-  getMultiline(): boolean {
-    return this.multiline;
-  }
-
-  setType(type: TextType): void {
-    this.type = type;
-  }
-  getType(): TextType {
-    return this.type;
-  }
-
-};
-
-class Containable {
-  title: string;
-  store: Map<string, Noteable>;
-
-  constructor(title: string = "", store: Map<string, Noteable> = new Map<string, Noteable>()) {
-    this.title = title;
-    this.store = store;
-  }
-
-  setTitle(title: string): void {
-    this.title = title;
-  }
-
-  getTitle(): string {
-    return this.title;
-  }
-
-  getStore(): Map<string, Noteable> {
-    return this.store;
-  }
-
-  addElement(key: string, value: Noteable): void {
-    this.store.set(key, value);
-  }
-
-  getElement(key: string): Noteable | undefined {
-    return this.store.get(key);
-  }
+type Note = {
+  tag: string,
+  date: Date,
+  title: string,
+  note: string
 }
 
-class Note extends Containable {
-  addField(key: string, text: string, multiline: boolean = true, type: TextType = TextType.Normal): void {
-    this.addElement(key, new Noteable(text,multiline,type)); 
-  }
+type CredData = {
+  key: string,
+  value: string
 }
 
-class Password extends Containable {
-  constructor() {
-    super();
-    this.addElement("email", new Noteable("",false,TextType.Normal));
-    this.addElement("password", new Noteable("",false,TextType.Normal));
-  }
-
-  addField(key: string, text: string, multiline: boolean = false, type: TextType = TextType.Normal): void {
-    this.addElement(key, new Noteable(text,multiline,type)); 
-  } 
+type Credential = {
+  tag: string,
+  date: Date,
+  title: string,
+  kvp: Array<CredData>
 }
 
-const usePasswordStoreState = () => {
-  const [authState, setAuthState] = useState({state: PasswordStoreState.Initial, data: new Array<Containable>});
 
-  const reset = () => {
-    setAuthState((oldState) => {return { state: PasswordStoreState.Initial, data: new Array<Containable> }});
-  }
-  
-  const initializeNewStoreInMemory = () : void => {
-    console.log("initializeNewStoreInMemory called")
-    setAuthState((oldState) => {return { state: PasswordStoreState.NewStoreInMemory, data: new Array<Containable> }});
-  }
-
-  const updateContainable = (callback: (value: Array<Containable>) => Array<Containable>)  => {
-    const res = callback(authState.data);
-    setAuthState((oldState) => {return {...oldState, data: res}});
-  }
-  
-  return { authState, reset, initializeNewStoreInMemory, updateContainable };
+type DataMap = {
+  groupName: string,
+  store: Array<Note | Credential>
 }
+
 
 const App: React.FC = () => {
-  
-  const {authState, initializeNewStoreInMemory} = usePasswordStoreState();
+  const { m_state, m_initializeState, m_transitionHandler } = useGenericStatefulData<Array<DataMap> | string | undefined,ProgStates>();
 
+  const [addGroupModal, setAddGroupModal] = useState(false);
+  const [deleteGroupModal, setDeleteGroupModal] = useState(false);
+  const [addNoteModal, setAddNoteModal] = useState(false);
+  const [addCredentialModal, setAddCredentialModal] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("");
+
+  const changeActiveTab = (next: any) => {
+    setActiveTab(() => next);
+  }
+
+
+  // Initialize program state upon load
+  useEffect(() => {
+    m_initializeState((data) => {
+      return { state: ProgStates.Initial, data: undefined }
+    })
+  }, []);
+
+  // Transition: create new store in memory
+  const t_createNew = () => {
+    const data = new Array<DataMap>()
+    data.push(
+      {
+        groupName: "General",
+        store: [
+          { 
+            tag: "note", 
+            date: new Date(), 
+            title: "Laundry Related Note",
+            note: `
+            Polyfill of Array.prototype.findIndex in core-js
+            Indexed collections
+            Array
+            Array.prototype.find()
+            Array.prototype.findLast()
+            Array.prototype.findLastIndex()
+            Array.prototype.indexOf()
+            Array.prototype.lastIndexOf()
+            TypedArray.prototype.findIndex()
+        `, 
+          } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test...", 
+          //   title: "Research Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test...This is a test here is a test...This is a test here is a test...", 
+          //   title: "Stuff Research Banana Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...", 
+          //   title: "Laundry Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test... This is a test here is a test...This is a test here is a test... This is a test here is a test...This is a test here is a test...", 
+          //   title: "Research  This is a test here is a test...This is a test here is a test...Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test...This is a test here is a test...This is a test here is a test...", 
+          //   title: "Stuff Research Banana Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...", 
+          //   title: "Laundry Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test...", 
+          //   title: "Research Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test...This is a test here is a test...This is a test here is a test...", 
+          //   title: "Stuff Research Banana Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...", 
+          //   title: "Laundry Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test...", 
+          //   title: "Research Related Note" 
+          // } as Note, 
+          // { 
+          //   tag: "note", 
+          //   date: new Date(), 
+          //   note: "This is a test here is a test...This is a test here is a test...This is a test here is a test...This is a test here is a test...", 
+          //   title: "Stuff Research Banana Related Note" 
+          // } as Note, 
+        
+        ]
+      }
+    );
+    m_transitionHandler(
+      (s) => {
+        return;
+      },
+      (s) => {
+        return { state: ProgStates.Unsaved, data};
+      },
+      (s) => {
+        return;
+      }
+    )
+
+    setActiveTab(data[0].groupName);
+  }
+
+  const t_loadExisting = (rawData: string) => {
+    m_transitionHandler(
+      (s) => {
+        return;
+      },
+      (s) => {
+        return { state: ProgStates.LockedData, data: rawData };
+      },
+      (s) => {
+        return;
+      }
+    )
+  }
+
+  const t_initiateSave = () => {
+
+  }
+
+  const t_reset = () => {
+    m_initializeState((data) => {
+      return { state: ProgStates.Initial, data: undefined }
+    })
+  }
+
+  const t_unlock = (data: any) => {
+    m_transitionHandler(
+      (s) => {
+        return;
+      },
+      (s) => {
+        return { state: ProgStates.Saved, data };
+      },
+      (s) => {
+        return;
+      }
+    )
+  }
+
+  const t_addgroup = (newGroupName: string) => {
+    m_transitionHandler(
+      (s) => {
+        console.log("pre", s)
+        return;
+      },
+      (s) => {
+        if (typeof(s.data) === "object") {
+          if (s.data.findIndex((v) => v.groupName === newGroupName) !== -1) {
+            return s;
+          }
+          const newState = {
+            state: s.state,
+            data: [...s.data, {
+              groupName: newGroupName,
+              store: new Array<Note | Credential>()
+            }] 
+          }
+          if (newState.data.length === 1) {
+            setActiveTab(newGroupName)
+          }
+          return newState;
+
+        }
+        return s;
+      },
+      (s) => {
+        console.log("post", s)
+        return;
+      }
+    )
+  }
+
+  const t_removegroup = () => {
+    m_transitionHandler(
+      (s) => {
+        return;
+      },
+      (s) => {
+        if (typeof(s.data) === "object") {
+          let removedIndex = undefined
+          let filteredData = s.data.filter((data, idx, arr) => {
+              if (data.groupName === activeTab) removedIndex = idx
+              return data.groupName != activeTab
+            });
+          const res = {
+            state: ProgStates.Unsaved,
+            data: filteredData
+          }
+          
+          // CODE IS BUGGY, its easy to reach buggy states when people write code
+          // intent is far away from reality "typeof(removedIndex) === 'number'"
+          if (typeof(removedIndex) === 'number' && res.data[removedIndex]) {
+            let fallbackTab = res.data[removedIndex].groupName;
+            setActiveTab(fallbackTab)
+          } else {
+            setActiveTab("")
+          }
+          return res;
+        }
+        return s;
+      },
+      (s) => {
+        return;
+      }
+    )
+    
+  }
+
+  const t_addNote = (currNote: Note) => {
+    m_transitionHandler(
+      (s) => {
+        return;
+      },
+      (s) => {
+        if (typeof(s.data) === "object") {
+          const newState = {...s};
+          let idx = s.data.findIndex((element) => element.groupName === activeTab);
+          if (newState.data && newState.data[idx]) {
+            let currentGroup: DataMap = newState.data[idx] as DataMap
+            currentGroup.store.push(currNote)
+            return newState
+          } else {
+            return s;
+          }
+        }
+        return s;
+      },
+      (s) => {
+        return;
+      }
+    )
+  }
+
+  const t_addCredential = (currCred: Credential) => {
+    m_transitionHandler(
+      (s) => {
+        return;
+      },
+      (s) => {
+        if (typeof(s.data) === "object") {
+          const newState = {...s};
+          let idx = s.data.findIndex((element) => element.groupName === activeTab);
+          if (newState.data && newState.data[idx]) {
+            let currentGroup: DataMap = newState.data[idx] as DataMap
+            currentGroup.store.push(currCred)
+            return newState
+          } else {
+            return s;
+          }
+        }
+        return s;
+      },
+      (s) => {
+        return;
+      }
+    )
+  }
+
+  const handleGroupModalOpen = () => {
+    setAddGroupModal(true);
+  }
+  
+  const handleGroupModalClose = () => {
+    setAddGroupModal(false);
+  }
+
+  const handleDeleteGroupModalOpen = () => {
+    setDeleteGroupModal(true);
+  }
+  
+  const handleDeleteGroupModalClose = () => {
+    setDeleteGroupModal(false);
+  }
+
+  const handleAddNoteModalOpen = () => {
+    setAddNoteModal(true);
+  }
+  
+  const handleAddNoteModalClose = () => {
+    setAddNoteModal(false);
+  }
+
+  const handleAddCredentialModalOpen = () => {
+    setAddCredentialModal(true);
+  }
+  
+  const handleAddCredentialModalClose = () => {
+    setAddCredentialModal(false);
+  }
+  
+
+  
+  const interactionEnabled : boolean = m_state.state && m_state.state > ProgStates.LockedData && activeTab !== "" ? true : false;
+
+  const noGroupSelected : boolean = m_state.state && m_state.state > ProgStates.LockedData ? true : false;
   return (
-    <>
+    <div>
+      <AddGroupModal show={addGroupModal} transition={t_addgroup} close={handleGroupModalClose}/>
+      <RemoveGroupModal show={deleteGroupModal} current={activeTab ? activeTab : ""} transition={t_removegroup} close={handleDeleteGroupModalClose}/>
+      <AddNoteModal show={addNoteModal} transition={t_addNote} close={handleAddNoteModalClose}/>
+      <AddCredentialModal show={addCredentialModal} transition={t_addCredential} close={handleAddCredentialModalClose}/>
+      
       <Navbar className="bg-body-tertiary">
         <Container>
-          <Navbar.Brand href="#">
+          <Navbar.Brand href="#" onClick={t_reset}>
             Key-<BiSolidShield/>-Rama
           </Navbar.Brand>
         </Container>
       </Navbar>
       <Container className="statusContainer">
-        <Alert transition={false} show={authState.state === PasswordStoreState.Initial} variant="success">
-          <Alert.Heading>Welcome to Key-<BiShield/>-Rama</Alert.Heading>
-          <p>
-          Offline Simple, Encrypted and Open source password manager. <br/> 
-          </p>
-          <hr />
-          <Stack className="d-flex justify-content-end" direction="horizontal" gap={3}>
-            <Button onClick={initializeNewStoreInMemory} variant="outline-success">
-              Load Existing
-            </Button>
-            <div className="vr" />
-            <Button onClick={initializeNewStoreInMemory} variant="success">
-              Get Started
-            </Button>
-          </Stack>
-          <div className="d-flex justify-content-end">
-          </div>
-        </Alert>
-        <Alert show={authState.state === PasswordStoreState.NewStoreInMemory} variant="primary">
-          <Stack className="d-flex justify-content-end" direction="horizontal" gap={3}>
-            <BiInfoCircle size={25}/> 
-            <div className="p-2 me-auto">
-              Remember to export your project.
-            </div>
-            <div className="input-group w-auto">
-              <Form.Control
-                required
-                type="password"
-                placeholder="File Password"
-              />
-            </div>
-            <Button onClick={initializeNewStoreInMemory} variant="primary">
-              Export
-            </Button>
-          </Stack>
-          <div className="d-flex justify-content-end">
-          </div>
-        </Alert>
+        {
+          m_state.state === undefined &&
+          <div className='spinnercontainer'>
+            <Spinner animation="border" />
+          </div> 
+        }
+        <WelcomeAlert transition={false}
+          show={m_state.state === ProgStates.Initial} 
+          t_createNew={t_createNew} 
+          t_loadExisting={t_loadExisting} 
+        />
+        <LoadedAlert
+          transition={true} 
+          show={(m_state.state && m_state.state > ProgStates.LockedData) ? true : false} 
+          t_initiateSave={t_initiateSave} 
+          t_reset={t_reset}
+        />
+        <UnlockAlert 
+          transition={true} 
+          show={m_state.state === ProgStates.LockedData} 
+          rawData={(typeof(m_state.data) === "string" ? m_state.data : "")}
+          t_unlock={t_unlock}
+          t_reset={t_reset}
+        />
       </Container>
       <Container className="mainContainer">
-        <Tab.Container id="left-tabs-example" defaultActiveKey="first">
           <Row>
-            <Col sm={3}>
+
+            <Col sm={12}>
               <Card>
-                <Card.Body>
-                  <Nav variant="pills" className="flex-column">
-                    <Nav.Item>
-                      <Nav.Link eventKey="first">Credentials</Nav.Link>
-                    </Nav.Item>
-                    <Nav.Item>
-                      <Nav.Link eventKey="second">Notes</Nav.Link>
-                    </Nav.Item>
+                <Card.Header>
+                  <Nav 
+                    variant="tabs" 
+                    activeKey={activeTab}
+                    onSelect={changeActiveTab}
+                  >
+                    {
+                      typeof(m_state.data) === "object" && m_state.data.map((value, index) => {
+                        return (
+                          <Nav.Item key={`tab-${value.groupName}`}>
+                            <Nav.Link
+                              eventKey={`${value.groupName}`}
+                            >
+                              {value.groupName}
+                            </Nav.Link>
+                          </Nav.Item>
+                        )
+                      })
+                    }
+                    <Button disabled={!noGroupSelected} variant="link" onClick={handleGroupModalOpen}>
+                      Add Group
+                    </Button>
                   </Nav>
-                  <Stack className="controlArea d-flex justify-content-end" direction="horizontal" gap={3}>
-                    <div className="input-group w-auto">
-                      <Form.Control
-                        type="text"
-                        placeholder="Group Name"
-                      />
-                    </div>
-                    <Button variant="outline-primary">
-                      Add
-                    </Button>
-                    <Button variant="outline-danger">
-                      Remove
-                    </Button>
-                  </Stack>
-                </Card.Body>
-              </Card>
-              <br />
-              <Card>
+                </Card.Header>
                 <Card.Body>
-                  <Form>
-                    {/* <Form.Group className="mb-3" controlId="formGroupEmail">
-                      <Form.Label>Email address</Form.Label>
-                      <Form.Control type="email" placeholder="Enter email" />
-                    </Form.Group>
-                    <Form.Group className="mb-3" controlId="formGroupPassword">
-                      <Form.Label>Password</Form.Label>
-                      <Form.Control type="password" placeholder="Password" />
-                    </Form.Group> */}
-                    {/* <Stack className="controlArea d-flex justify-content-end" direction="horizontal" gap={3}>
-                      <div className="input-group w-auto">
-                        <Form.Control
-                          type="text"
-                          placeholder="Other Information"
-                        />
-                      </div>
-                      <Button variant="outline-primary">
-                        <BiPlus size={25}/>
-                      </Button>
-                    </Stack> */}
-                    {/* <hr /> */}
-
-                    <Stack className="d-flex" direction="vertical" gap={3}>
-                      <Button variant="outline-primary">
-                        Add Entry
-                      </Button>
-                    </Stack>
-                  </Form>
-
-
-
-
-                  
-                  
+                  <div className='masonry-holder'>
+                    <ButtonGroup aria-label="Add new">
+                      <Button onClick={handleAddCredentialModalOpen} disabled={!interactionEnabled} variant="outline-primary">New Credential</Button>
+                      <Button onClick={handleAddNoteModalOpen} disabled={!interactionEnabled} variant="outline-primary">New Note</Button>
+                      <Button onClick={handleDeleteGroupModalOpen} disabled={!interactionEnabled} variant="outline-danger">Delete this group</Button>
+                    </ButtonGroup>
+                    <hr></hr>
+                    <ResponsiveMasonry
+                      columnsCountBreakPoints={{350: 1, 750: 2, 900: 3}}
+                    >
+                      <Masonry>
+                        {
+                          interactionEnabled && typeof(m_state.data) === "object" && m_state.data.filter((ele) => ele.groupName === activeTab)[0].store.map((value, index) => {
+                            if (value.tag === "note") {
+                              const currNote = value as Note
+                              return (
+                                <NoteCard key={`nav-entry-${index}`} title={currNote.title} note={currNote.note} date={currNote.date} />
+                              )
+                            } else {
+                              const currCred = value as Credential
+                              return <CredCard key={`nav-entry-${index}`} title={currCred.title} kvp={currCred.kvp} date={currCred.date}/>
+                            }
+                          })
+                        } 
+                      </Masonry>
+                    </ResponsiveMasonry>
+                  </div>
                 </Card.Body>
               </Card>
-            </Col>
-            <Col sm={9}>
-              <Tab.Content>
-                <Tab.Pane eventKey="first">
-                  
-                </Tab.Pane>
-                <Tab.Pane eventKey="second">Second tab content</Tab.Pane>
-              </Tab.Content>
+
             </Col>
           </Row>
-        </Tab.Container>
       </Container>
-
-    </>
-  );
-};
+        
+    </div>
+      );
+    };
 export default App;
-
+        
+    
 // const {
   //   token: { colorBgContainer },
   // } = theme.useToken();

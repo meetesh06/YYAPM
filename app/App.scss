@@ -12,3 +12,25 @@
 .controlArea {
     margin-top: 2rem;
 }
+ 
+.spinnercontainer {
+    display: flex;
+    justify-content: center;
+}
+
+.invalidAlertText {
+    color: red;
+    font-weight: bold;
+}
+
+.masonry-holder {
+    padding: 10px;
+}
+
+.notecard-container {
+    padding: 0.5rem;
+}
+
+.notecard {
+    width: 100%;
+}
