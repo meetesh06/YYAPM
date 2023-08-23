@@ -22,6 +22,7 @@ const Comp: React.FC<C_Props> = ({show, transition, close}) => {
   }
   
   const addGroup = () => {
+    setGroupName("");
     transition(groupName);
     close();
   }

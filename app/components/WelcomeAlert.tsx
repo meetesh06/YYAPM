@@ -69,7 +69,7 @@ const Comp: React.FC<C_Props> = ({transition, show, t_loadExisting, t_createNew}
           onClick={t_createNew}
           variant="success"
         >
-          Get Started
+          Create New
         </Button>
       </Stack>
     </Alert>

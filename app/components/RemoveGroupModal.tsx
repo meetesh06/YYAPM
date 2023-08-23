@@ -39,7 +39,7 @@ const Comp: React.FC<C_Props> = ({show, current, transition, close}) => {
           <Modal.Title>Remove group <b>{current}</b>?</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        Are you sure you want to do this, if yes, type the name of the group in the textbox below.
+        Are you sure you want to do this? If yes, type <i>{current}</i> in the textbox below.
         <Form onSubmit={(e) => { e.preventDefault(); }}>
           <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
             <Form.Label>Group Name</Form.Label>

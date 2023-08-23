@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Form, Stack } from 'react-bootstrap';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
-
+import * as crypto from "crypto";
 interface C_Props {
   show: boolean,
   transition: any,
@@ -12,6 +12,31 @@ interface C_Props {
 type CredData = {
   key: string,
   value: string
+}
+
+function generateSecurePassword() {
+  const length = 14
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
+
+  if (length < 1 || typeof length !== 'number') {
+    throw new Error('Invalid password length. Length must be a positive number.');
+  }
+
+  let password = '';
+  if (crypto && crypto.getRandomValues) {
+    const values = new Uint32Array(length);
+    crypto.getRandomValues(values);
+
+    for (let i = 0; i < length; i++) {
+      password += charset[values[i] % charset.length];
+    }
+  } else {
+    // Fallback to Math.random()
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+  }
+  return password
 }
 
 const Comp: React.FC<C_Props> = ({show, transition, close}) => {
@@ -43,6 +68,9 @@ const Comp: React.FC<C_Props> = ({show, transition, close}) => {
 
   
   const addCred = () => {
+    setCredTitle("");
+    setKvp([{ key: "Email", value: "" }, { key: "Password", value: "" }] as Array<CredData>)
+    setNewFieldValue("")
     transition({
       tag: "credential",
       date: new Date(),
@@ -83,6 +111,12 @@ const Comp: React.FC<C_Props> = ({show, transition, close}) => {
                       value={kvp[idx].value}
                       onChange={(v) => { setKvp((old) => { const newState = [...kvp]; newState[idx].value = v.target.value; return newState; }) }}
                     />
+                    <Button 
+                      variant="outline-primary" 
+                      onClick={() => setKvp((old) => old.map((ele, idxx) => { if (idxx === idx) { return { ...ele, value: generateSecurePassword() } } else { return ele }}))}
+                    >
+                      Generate
+                    </Button>
                     <Button 
                       variant="outline-danger" 
                       onClick={() => setKvp((old) => old.filter((ele, idxx) => idxx !== idx))}

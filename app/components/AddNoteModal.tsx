@@ -31,6 +31,8 @@ const Comp: React.FC<C_Props> = ({show, transition, close}) => {
   }
   
   const addNote = () => {
+    setNoteTitle("")
+    setNoteNote("")
     transition({
       tag: "note",
       date: new Date(),
