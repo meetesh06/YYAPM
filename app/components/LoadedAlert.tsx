@@ -35,7 +35,7 @@ const Comp: React.FC<C_Props> = ({savedState, transition, show, t_initiateSave, 
             placeholder="File Password"
           />
         </div>
-        <Button onClick={handleSave} variant="primary">
+        <Button disabled={master === ""} onClick={handleSave} variant="primary">
           Export
         </Button>
         <div className="vr" />

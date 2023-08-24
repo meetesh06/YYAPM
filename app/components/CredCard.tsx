@@ -24,15 +24,14 @@ const copyToClipboard = (text:string) => {
 
 const Comp: React.FC<C_Props> = ({title, kvp, date, remove}) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [showCopied, setShowCopied] = useState(-1);
   return (
     <div className='notecard-container'>
-      <Card bg="light" className='notecard'>
-        <Card.Header>
-          <Card.Title style={{ fontFamily: 'cursive', fontWeight: "bold", fontSize: 25 }}>
+      <Card  className='notecard'>
+        <Card.Header style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: 14 }}>
             {title}
-          </Card.Title>
         </Card.Header>
-        <Card.Body style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 'lighter' }}>
+        <Card.Body style={{ fontFamily: 'monospace', fontSize: 10 }}>
         {
           kvp.map((ele, idx) => {
             return (
@@ -46,31 +45,34 @@ const Comp: React.FC<C_Props> = ({title, kvp, date, remove}) => {
                     value={kvp[idx].value}
                     onChange={(e) => e}
                   />
-                  <Button style={{ marginLeft: 5 }} onClick={() => copyToClipboard(kvp[idx].value)} variant='outline-warning'>
-                    <AiOutlineCopy />
+                  <Button style={{ marginLeft: 5 }} onClick={() => { setShowCopied(idx); setTimeout(() => setShowCopied(-1), 1500); copyToClipboard(kvp[idx].value)}} variant='outline-dark'>
+                    {showCopied !== idx && <AiOutlineCopy />}                    
+                    {showCopied === idx && <div> Copied </div>}
                   </Button>
                 </Stack>
               </Form.Group>
             )
           })
         }
+        <p style={{ marginTop: 15, fontFamily: 'monospace', fontSize: 8, }}>
+          {date.toLocaleString()} 
+        </p>
         </Card.Body>
         <Card.Footer>
-          <p style={{ fontFamily: 'monospace', fontSize: 9, }}>
-            {date.toLocaleString()} 
-          </p>
-          <Button style={{ marginRight: 5 }} onClick={() => setPasswordVisible((old) => !old)} variant='outline-primary'>
-            {
-              passwordVisible && <AiFillEyeInvisible/>
-            }
-            {
-              !passwordVisible && <AiFillEye/>
-            }
-          </Button>
-          <div className="vr" />
-          <Button onClick={remove} variant='outline-danger'>
-            <AiFillDelete />
-          </Button>
+          <Stack direction='horizontal'>
+            <div className="me-auto" />
+            <Button  style={{ marginRight: 5 }} onClick={() => setPasswordVisible((old) => !old)} variant='outline-dark'>
+              {
+                passwordVisible && <AiFillEyeInvisible/>
+              }
+              {
+                !passwordVisible && <AiFillEye/>
+              }
+            </Button>
+            <Button onClick={remove} variant='outline-danger'>
+              <AiFillDelete />
+            </Button>
+          </Stack>
         </Card.Footer>
       
       </Card>

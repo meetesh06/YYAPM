@@ -280,6 +280,8 @@ const App: React.FC = () => {
           if (typeof(removedIndex) === 'number' && res.data[removedIndex]) {
             let fallbackTab = res.data[removedIndex].groupName;
             setActiveTab(fallbackTab)
+          } else if (res.data.length > 0){
+            setActiveTab(res.data[0].groupName)
           } else {
             setActiveTab("")
           }
@@ -411,6 +413,7 @@ const App: React.FC = () => {
 
   const validProjectIsLoaded = m_state.state && m_state.state > ProgStates.LockedData
 
+
   
   const shouldShowAddGroupButton = validProjectIsLoaded
   const shouldAllowAdditionToAGroup = validProjectIsLoaded
@@ -493,12 +496,6 @@ const App: React.FC = () => {
                 </Card.Header>
                 <Card.Body>
                   <div className='masonry-holder'>
-                    <ButtonGroup aria-label="Add new">
-                      <Button onClick={handleAddCredentialModalOpen} disabled={!shouldAllowAdditionToAGroup} variant="outline-primary">New Credential</Button>
-                      <Button onClick={handleAddNoteModalOpen} disabled={!shouldAllowAdditionToAGroup} variant="outline-primary">New Note</Button>
-                      <Button onClick={handleDeleteGroupModalOpen} disabled={!shouldAllowAdditionToAGroup} variant="outline-danger">Delete this group</Button>
-                    </ButtonGroup>
-                    <hr></hr>
                     <ResponsiveMasonry
                       columnsCountBreakPoints={{350: 1, 750: 2, 900: 3}}
                     >
@@ -525,6 +522,17 @@ const App: React.FC = () => {
                     </ResponsiveMasonry>
                   </div>
                 </Card.Body>
+                <Card.Footer>
+                  <Stack direction='horizontal' style={{ paddingTop: 10, paddingBottom: 10 }}>
+                    <div className="me-auto" />
+                    <ButtonGroup size='sm' aria-label="Add new">
+                      <Button onClick={handleAddCredentialModalOpen} disabled={!shouldAllowAdditionToAGroup} variant="outline-primary">+ Cred</Button>
+                      <Button onClick={handleAddNoteModalOpen} disabled={!shouldAllowAdditionToAGroup} variant="outline-primary">+ Note</Button>
+                      <Button onClick={handleDeleteGroupModalOpen} disabled={!shouldAllowAdditionToAGroup} variant="danger">Delete <b>{activeTab}</b></Button>
+                    </ButtonGroup>
+
+                  </Stack>
+                </Card.Footer>
               </Card>
 
             </Col>

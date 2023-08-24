@@ -1,5 +1,5 @@
 import Card from 'react-bootstrap/Card';
-import { Button } from 'react-bootstrap';
+import { Button, Stack } from 'react-bootstrap';
 import { AiFillEyeInvisible, AiFillEye, AiFillDelete } from 'react-icons/ai';
 
 interface C_Props {
@@ -13,22 +13,23 @@ interface C_Props {
 const Comp: React.FC<C_Props> = ({title, note, date, remove}) => {
   return (
     <div className='notecard-container'>
-      <Card style={{ padding: 0 }} bg="warning" className='notecard'>
-        <Card.Header>
-          <Card.Title style={{ fontFamily: 'cursive', fontWeight: "bold", fontSize: 25 }}>
-            {title}
-          </Card.Title>
+      <Card style={{ padding: 0 }} className='notecard'>
+        <Card.Header style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 'bold' }}>
+          {title}
         </Card.Header>
-        <Card.Body style={{ fontFamily: 'monospace', fontSize: 12 }}>
+        <Card.Body style={{ fontFamily: 'monospace', fontSize: 10, textAlign: 'justify' }}>
           {note.split("\n").map((text, idx) => <div key={`${text}-${idx}`}>{text}</div>)}
-        </Card.Body>
-        <Card.Footer>
-          <p style={{ fontFamily: 'monospace', fontSize: 9, }}>
+          <p style={{ marginTop: 15, fontFamily: 'monospace', fontSize: 8, }}>
             {date.toLocaleString()} 
           </p>
-          <Button onClick={remove} variant='outline-danger'>
-            <AiFillDelete />
-          </Button>
+        </Card.Body>
+        <Card.Footer>
+          <Stack direction='horizontal'>
+            <div className="me-auto" />
+            <Button size="sm" onClick={remove} variant='outline-danger'>
+              <AiFillDelete />
+            </Button>
+          </Stack>
         </Card.Footer>
       </Card>
     </div>
